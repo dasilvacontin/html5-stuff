@@ -1,0 +1,285 @@
+<html>
+<head>
+
+	<script src="Keyboard.js"></script>
+	<script src="underscore.js"></script>
+	<script src="pixi.dev.js"></script>
+
+	<style>
+
+		@font-face
+		{
+			font-family: Retro;
+			src: url('retro.ttf');
+		}
+
+		body {
+			padding: 0px;
+			margin: 0px;
+		}
+
+	</style>
+
+</head>
+<body>
+	<canvas id="myCanvas"></canvas>
+	<script>
+
+	var keyboard = new KeyboardJS(true);
+
+	var earth = ["#33CC33", "#47D147"];//, "#5CD65C"];
+
+	function randColor () {
+		//return '#'+Math.floor(Math.random()*16777215).toString(16);
+		return earth[Math.floor(Math.random()*earth.length)];
+	}
+
+	var floor = Math.floor;
+
+	function Chunk (i,j) {
+
+		this.i = i;
+		this.j = j;
+		this.entities = [];
+		this.buff = [];
+
+	}
+
+	var dirs = [[-1, 0], [0, -1], [1, 0], [0, 1]];
+
+	Chunk.prototype = {
+
+		init : function (size) {
+
+			for (var i = 0; i < size; ++i) {
+				var row = [];
+				for (var j = 0; j < size; ++j) {
+					row.push(randColor());
+				}
+				this.buff.push(row);
+			}
+
+			var wi = Math.floor(Math.random()*size)+this.i*size;
+			var wj = Math.floor(Math.random()*size)+this.j*size;
+			this.spread(wi, wj, "#33CCFF", 0.4);
+
+			var ti = Math.floor(Math.random()*size)+this.i*size;
+			var tj = Math.floor(Math.random()*size)+this.j*size;
+			this.spread(ti, tj, "#30AC59", 0.4);
+
+			var ti = Math.floor(Math.random()*size)+this.i*size;
+			var tj = Math.floor(Math.random()*size)+this.j*size;
+			this.spread(ti, tj, "#669999", 0.3);
+
+		},
+
+		spread : function (i,j, type, prob) {
+			if (Map.tileAt(i,j) == type) return;
+			if (Math.random() > prob) return;
+			Map.setTileAt(i, j, type);
+			for (var k = 0; k < dirs.length; ++k) this.spread(i+dirs[k][0], j+dirs[k][1], type, prob);
+		},
+
+		// If function f returns true, ends loop
+		forEntityInChunk : function (f) {
+			for (var i = 0; i < this.entities.length; ++i) {
+				var entity = this.entities[i];
+				if (f(entity)) return;
+			}
+		},
+
+		tileAt : function (i, j) {
+			var size = this.buff.length;
+			var row = this.buff[i - this.i*size];
+			if (row == undefined) return "#000000";
+			return row[j - this.j*size];
+		},
+
+		setTileAt : function (i, j, value) {
+			var size = this.buff.length;
+			var row = this.buff[i - this.i*size];
+			if (row == undefined) return "#000000";
+			row[j - this.j*size] = value;
+		}
+
+	};
+
+	function ChunkHash (chunkSize) {
+
+		this.chunkSize = chunkSize;
+		this.hash = {};
+		this.lastLink = undefined;
+		this.lastChunk = undefined;
+
+	}
+
+	ChunkHash.prototype.hF = function (n) {
+		var r = n/this.chunkSize;
+		if (n<0) {
+			if (n%this.chunkSize != 0) --r;
+			return Math.ceil(r);
+		}
+		return Math.floor(r);
+	}
+
+	ChunkHash.prototype.linkFor = function (i, j) {
+		var oi = this.hF(i);
+		var oj = this.hF(j)
+		return oi + " " + oj;
+	}
+
+	ChunkHash.prototype.chunkAt = function (i, j) {
+
+		var oi = this.hF(i);
+		var oj = this.hF(j)
+		var link = oi + " " + oj;
+		var chunk;
+
+		if (link == this.lastLink) chunk = this.lastChunk;
+		else chunk = this.hash[link];
+
+		if (chunk == undefined) {
+			chunk = new Chunk (oi, oj);
+			this.hash[link] = chunk;
+			chunk.init(this.chunkSize);
+		}
+
+		this.lastLink = link;
+		this.lastChunk = chunk;
+
+		return chunk;
+
+	}
+
+	ChunkHash.prototype.tileAt = function (i, j) {
+
+		return this.chunkAt(i,j).tileAt(i,j);
+
+	}
+
+	ChunkHash.prototype.setTileAt = function (i, j, value) {
+		this.chunkAt(i,j).setTileAt(i, j, value);
+	}
+
+	var Map = new ChunkHash (8);	
+
+	var offsetY = 0;
+	var offsetX = 0;
+
+	var psize = 25;
+
+	function render () {
+		for (var i = 0; i < window.innerHeight/psize + 1; ++i) {
+			for (var j = 0; j < window.innerWidth/psize + 1; ++j) {
+				ctx.fillStyle = Map.tileAt(Math.floor(i+offsetY), Math.floor(j+offsetX));
+				ctx.fillRect(j*psize, i*psize, psize, psize);
+			}
+		}
+		
+		ctx.fillStyle = "white";
+		ctx.font = "30px Retro";
+		ctx.fillText("FPS: "+Math.floor(fps), 25, window.innerHeight-20);
+
+	}
+
+	var oldDate = +new Date ();
+	var delta = 0;
+	var fps = 0;
+
+	var canvas = document.getElementById("myCanvas");
+	var ctx = canvas.getContext('2d');
+	window.onresize = function () {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		render();
+	}
+	window.onresize();
+
+	var speed = 1;
+
+	function mainLoop () {
+		requestAnimFrame( mainLoop );
+
+		var newDate = +new Date ();
+		delta = newDate - oldDate;
+		oldDate = newDate;
+		fps = 3*fps/4 + (1000/delta)/4;
+
+		if (keyboard.char('W')) {
+			offsetY -= speed;
+		} else if (keyboard.char('S')) {
+			offsetY += speed;
+		}
+
+		if (keyboard.char('A')) {
+			offsetX -= speed;
+		} else if (keyboard.char('D')) {
+			offsetX += speed;
+		}
+
+		render();
+	}
+
+	requestAnimFrame( mainLoop );
+
+	/*
+	var explosions = [];
+	
+	var count = 0;
+		
+	// create an new instance of a pixi stage
+	var stage = new PIXI.Stage(0xFFFFFF);
+	
+	// create a renderer instance.
+	renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight);
+		
+	// add the renderer view element to the DOM
+	document.body.appendChild(renderer.view);
+
+	var canvas = renderer.view;
+
+
+	// create an array to store the textures
+	var explosionTextures = [];
+	
+	for (var i=0; i < 26; i++) 
+	{
+	 	var texture = PIXI.Texture.fromFrame("Explosion_Sequence_A " + (i+1) + ".png");
+	 	explosionTextures.push(texture);
+	};
+	
+	// create a texture from an image path
+	// add a bunch of aliens
+	for (var i = 0; i < 50; i++) 
+	{
+		// create an explosion MovieClip
+		var explosion = new PIXI.MovieClip(explosionTextures);
+		
+	
+		explosion.position.x = Math.random() * 800;
+		explosion.position.y = Math.random() * 600;
+		explosion.anchor.x = 0.5;
+		explosion.anchor.y = 0.5;
+		
+		explosion.rotation = Math.random() * Math.PI;
+		explosion.scale.x = explosion.scale.y = 0.75 + Math.random() * 0.5
+		
+		explosion.gotoAndPlay(Math.random() * 27);
+		
+		stage.addChild(explosion);
+	}
+	
+	// start animating
+	requestAnimFrame( animate );
+
+	function animate() {
+	
+	    requestAnimFrame( animate );
+
+	    renderer.render(stage);
+	}
+
+	*/
+	</script>
+</body>
+</html>
