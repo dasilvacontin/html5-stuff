@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="bower_components/jquery/dist/jquery.js"></script>
+	<style>
+
+		*, html, body {
+			margin: 0px;
+			padding: 0px;
+		}
+
+		html, body {
+			height: 100%;
+			width: 100%;
+		}
+
+		body {
+			background-color: #47C59B;
+		}
+
+		.vcenter {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+		}
+
+		input, textarea {
+			display: block;
+			margin: 0px;
+			padding: 20px;
+			font-size: 16px;
+			width: 500px;
+			border: none;
+			color: #aaaaaa;
+		}
+
+		textarea {
+			resize: vertical;
+			max-height: 400px;
+		}
+
+		#subject, #msg {
+			border-bottom: 5px solid #47C59B;
+		}
+
+		#msg {
+			min-height: 100px;
+		}
+
+		#submit {
+			background-color: white;
+			color: #47C59B;
+			transition: 0.5s background-color, 0.5s color;
+			box-sizing: content-box;
+		}
+
+		#submit:hover {
+			color: white;
+			background-color: #1F785B;
+		}
+
+		#kek {
+			margin-top: 5px;
+		}
+
+	</style>
+</head>
+<body>
+	<form id="kekform" class="vcenter" method="post">
+	  <input id="subject" type="text" name="subject" placeholder='Subject'>
+	  <textarea id="msg" type="text" name="msg" placeholder="Your wonderful message" cols="40" rows="5" ... ></textarea>
+	  <input id="submit" type="submit" value="Send">
+	  <div id="kek"></div>
+	</form>
+	<script src="kek.js"></script>
+</body>
+</html>
